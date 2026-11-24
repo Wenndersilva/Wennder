@@ -1,0 +1,17 @@
+{
+  "name": "mcp-nup-boavista",
+  "version": "1.0.0",
+  "description": "MCP para consulta de NUP no Portal do Cidadão de Boa Vista/RR",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "http": "node server.js --http",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright": "^1.63.0",
+    "zod": "^4.6.7"
+  },
+  "type": "module"
+}
