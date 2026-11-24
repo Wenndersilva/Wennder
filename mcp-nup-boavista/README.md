@@ -69,14 +69,14 @@ O `monitor.js` consulta os processos listados em `processos.json`. Ele guarda a 
 e manda alerta **só quando algum processo mudar** (situação, setor ou andamento) ou quando a consulta falhar.
 
 ```bash
-node monitor.js            # execução normal
-node monitor.js --resumo   # manda o resumo de todos, mesmo sem mudança (ex.: toda segunda)
+node --env-file=.env monitor.js            # execução normal
+node --env-file=.env monitor.js --resumo   # manda o resumo de todos, mesmo sem mudança (ex.: toda segunda)
 ```
 
 Para incluir ou tirar processos, edite `processos.json` (campos `nup`, `orgao` e `apelido`).
 
-**Alerta por e-mail** (Gmail com senha de app, ou o SMTP da ASC). Defina as variáveis no agendador,
-não no código:
+**Alerta por e-mail:** copie `.env.example` para `.env` e preencha (destinatários: CEO e financeiro).
+O `.env` fica só na máquina e não vai para o Git. As variáveis são:
 
 ```
 SMTP_HOST=smtp.gmail.com  SMTP_PORT=465  SMTP_USER=alertas@...  SMTP_PASS=<senha de app>
@@ -88,9 +88,9 @@ Sem SMTP nem webhook configurados, o alerta só aparece no terminal.
 
 **Agendar (máquina no Brasil, ligada no horário):**
 - Windows: Agendador de Tarefas → Criar tarefa básica → diariamente às 08:10 e às 14:10 →
-  programa `node`, argumentos `monitor.js`, iniciar em `C:\...\mcp-nup-boavista`.
+  programa `node`, argumentos `--env-file=.env monitor.js`, iniciar em `C:\...\mcp-nup-boavista`.
 - Linux/VPS (`crontab -e`):
-  `10 8,14 * * 1-5 cd /opt/mcp-nup-boavista && node monitor.js >> monitor.log 2>&1`
+  `10 8,14 * * 1-5 cd /opt/mcp-nup-boavista && node --env-file=.env monitor.js >> monitor.log 2>&1`
 
 ## Ajustes (variáveis de ambiente)
 
