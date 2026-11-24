@@ -93,7 +93,7 @@ async function selecionarOrgao(page, orgao) {
   return null; // portal sem seletor de órgão: segue só com o NUP
 }
 
-async function consultarNup(bruto, orgao) {
+export async function consultarNup(bruto, orgao) {
   const { nup, volume } = normalizarNup(bruto);
   return withPage(async (page) => {
     const api = [];
@@ -220,7 +220,11 @@ async function main() {
   }).listen(CFG.port, () => console.error(`MCP NUP Boa Vista em http://0.0.0.0:${CFG.port}/mcp`));
 }
 
+export async function fecharNavegador() { if (browserPromise) await (await browserPromise).close().catch(() => {}); browserPromise = undefined; }
 const shutdown = async () => { if (browserPromise) await (await browserPromise).close().catch(() => {}); process.exit(0); };
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-if (!process.env.NUP_NO_MAIN) main().catch((e) => { console.error(e); process.exit(1); });
+const executadoDireto = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("server.js");
+if (executadoDireto) {
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
+if (executadoDireto) main().catch((e) => { console.error(e); process.exit(1); });

@@ -63,6 +63,35 @@ Cada secretaria numera de um jeito e todos são aceitos como vêm no protocolo:
 Anotações como "(VOLUME 2)" são removidas antes da busca e devolvidas no campo `volume`.
 Se o portal tiver um seletor de órgão, a sigla informada é escolhida nele automaticamente.
 
+## Monitor diário dos processos da ASC
+
+O `monitor.js` consulta os processos listados em `processos.json`. Ele guarda a última situação em `estado.json`
+e manda alerta **só quando algum processo mudar** (situação, setor ou andamento) ou quando a consulta falhar.
+
+```bash
+node monitor.js            # execução normal
+node monitor.js --resumo   # manda o resumo de todos, mesmo sem mudança (ex.: toda segunda)
+```
+
+Para incluir ou tirar processos, edite `processos.json` (campos `nup`, `orgao` e `apelido`).
+
+**Alerta por e-mail** (Gmail com senha de app, ou o SMTP da ASC). Defina as variáveis no agendador,
+não no código:
+
+```
+SMTP_HOST=smtp.gmail.com  SMTP_PORT=465  SMTP_USER=alertas@...  SMTP_PASS=<senha de app>
+ALERTA_PARA=financeiro@...,diretoria@...
+WEBHOOK_URL=<opcional: Slack, Teams, n8n>
+```
+
+Sem SMTP nem webhook configurados, o alerta só aparece no terminal.
+
+**Agendar (máquina no Brasil, ligada no horário):**
+- Windows: Agendador de Tarefas → Criar tarefa básica → diariamente às 08:10 e às 14:10 →
+  programa `node`, argumentos `monitor.js`, iniciar em `C:\...\mcp-nup-boavista`.
+- Linux/VPS (`crontab -e`):
+  `10 8,14 * * 1-5 cd /opt/mcp-nup-boavista && node monitor.js >> monitor.log 2>&1`
+
 ## Ajustes (variáveis de ambiente)
 
 | Variável | Uso |
