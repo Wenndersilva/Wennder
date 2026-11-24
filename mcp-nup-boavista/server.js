@@ -74,7 +74,27 @@ async function withPage(fn) {
   try { return await fn(page); } finally { await ctx.close(); }
 }
 
-async function consultarNup(nup) {
+// "00000.0.013014/2026 (VOLUME 2)" -> nup "00000.0.013014/2026", volume "2"
+export function normalizarNup(bruto) {
+  const volume = bruto.match(/vol(?:ume)?\.?\s*(\d+)/i)?.[1];
+  const nup = bruto.replace(/\(.*?\)/g, "").replace(/vol(?:ume)?\.?\s*\d+/i, "").trim();
+  return { nup, volume };
+}
+
+async function selecionarOrgao(page, orgao) {
+  if (!orgao) return null;
+  const selects = page.locator("select:visible");
+  for (let i = 0; i < await selects.count(); i++) {
+    const sel = selects.nth(i);
+    const opts = await sel.locator("option").evaluateAll((os) => os.map((o) => ({ v: o.value, t: o.textContent.trim() })));
+    const alvo = opts.find((o) => new RegExp(`\\b${orgao}\\b`, "i").test(o.t) || o.v.toLowerCase() === orgao.toLowerCase());
+    if (alvo) { await sel.selectOption(alvo.v); return alvo.t; }
+  }
+  return null; // portal sem seletor de órgão: segue só com o NUP
+}
+
+async function consultarNup(bruto, orgao) {
+  const { nup, volume } = normalizarNup(bruto);
   return withPage(async (page) => {
     const api = [];
     page.on("response", async (res) => {
@@ -88,6 +108,7 @@ async function consultarNup(nup) {
 
     await page.goto(CFG.url, { waitUntil: "networkidle" });
     const html = await page.content();
+    const orgaoSelecionado = await selecionarOrgao(page, orgao);
     const input = await findInput(page);
     await input.fill("");
     await input.fill(nup);
@@ -105,6 +126,9 @@ async function consultarNup(nup) {
 
     return {
       nup,
+      volume,
+      orgao: orgao || undefined,
+      orgao_selecionado_no_portal: orgaoSelecionado || undefined,
       encontrado: !semResultado,
       captcha_detectado: CAPTCHA_RE.test(html) || undefined,
       respostas_api: novas.map(({ method, url, status, json }) => ({ method, url, status, json })),
@@ -136,10 +160,13 @@ function buildServer() {
   server.registerTool("consultar_nup", {
     title: "Consultar NUP – Prefeitura de Boa Vista",
     description: "Consulta um processo/documento pelo NUP no Portal do Cidadão da Prefeitura de Boa Vista/RR e devolve situação, andamentos e demais dados exibidos pelo portal. Só leitura.",
-    inputSchema: { nup: z.string().min(4).max(40).describe("Número do NUP, com ou sem pontuação, exatamente como no protocolo") },
-  }, async ({ nup }) => {
+    inputSchema: {
+      nup: z.string().min(4).max(60).describe("NUP como está no protocolo. Ex.: 226812025, 00000.0.013014/2026, 24999/2026. Anotações como '(VOLUME 2)' são tratadas"),
+      orgao: z.string().max(20).optional().describe("Sigla da secretaria dona do processo, ex.: SMAG, SMEC, SMCP"),
+    },
+  }, async ({ nup, orgao }) => {
     try {
-      const r = await consultarNup(nup.trim());
+      const r = await consultarNup(nup.trim(), orgao?.trim());
       return { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] };
     } catch (e) {
       return { isError: true, content: [{ type: "text", text: `Falha na consulta: ${e.message}` }] };
@@ -149,12 +176,14 @@ function buildServer() {
   server.registerTool("consultar_nups_em_lote", {
     title: "Consultar vários NUPs",
     description: "Consulta uma lista de NUPs em sequência (até 20) no portal de Boa Vista. Útil para acompanhar a carteira de processos.",
-    inputSchema: { nups: z.array(z.string().min(4).max(40)).min(1).max(20) },
-  }, async ({ nups }) => {
+    inputSchema: {
+      processos: z.array(z.object({ nup: z.string().min(4).max(60), orgao: z.string().max(20).optional() })).min(1).max(20),
+    },
+  }, async ({ processos }) => {
     const out = [];
-    for (const n of nups) {
-      try { out.push(await consultarNup(n.trim())); }
-      catch (e) { out.push({ nup: n, erro: e.message }); }
+    for (const p of processos) {
+      try { out.push(await consultarNup(p.nup.trim(), p.orgao?.trim())); }
+      catch (e) { out.push({ nup: p.nup, orgao: p.orgao, erro: e.message }); }
     }
     return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }] };
   });
@@ -194,4 +223,4 @@ async function main() {
 const shutdown = async () => { if (browserPromise) await (await browserPromise).close().catch(() => {}); process.exit(0); };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-main().catch((e) => { console.error(e); process.exit(1); });
+if (!process.env.NUP_NO_MAIN) main().catch((e) => { console.error(e); process.exit(1); });

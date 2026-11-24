@@ -12,8 +12,8 @@ Servidores de nuvem nos EUA/Europa não conseguem acessar.
 
 | Ferramenta | O que faz |
 |---|---|
-| `consultar_nup` | Consulta 1 NUP: situação, setor, andamentos, tudo o que o portal exibir |
-| `consultar_nups_em_lote` | Consulta até 20 NUPs em sequência (carteira de processos) |
+| `consultar_nup` | Consulta 1 NUP (+ sigla da secretaria, opcional): situação, setor, andamentos |
+| `consultar_nups_em_lote` | Consulta até 20 pares NUP + secretaria em sequência (carteira de processos) |
 | `diagnosticar_site` | Lista campos, chamadas de rede e se há captcha. Use quando a consulta falhar |
 
 ## Opção A — no seu PC (mais simples)
@@ -55,6 +55,13 @@ Coloque o servidor atrás de HTTPS (Caddy ou Nginx) e rode-o com pm2 ou systemd.
 ```bash
 claude mcp add --transport http nup-boavista https://SEU-DOMINIO/mcp --header "Authorization: Bearer <token>"
 ```
+
+## Formatos de NUP aceitos
+
+Cada secretaria numera de um jeito e todos são aceitos como vêm no protocolo:
+`226812025` (SMAG), `00000.0.013014/2026 (VOLUME 2)` (SMEC), `24999/2026` (SMCP).
+Anotações como "(VOLUME 2)" são removidas antes da busca e devolvidas no campo `volume`.
+Se o portal tiver um seletor de órgão, a sigla informada é escolhida nele automaticamente.
 
 ## Ajustes (variáveis de ambiente)
 
